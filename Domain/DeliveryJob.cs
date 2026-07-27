@@ -17,10 +17,14 @@ public class DeliveryJob
     public string OrderCode { get; set; } = string.Empty;      // "#1042" (visible al rider)
     public string RestaurantName { get; set; } = string.Empty;
     public string PickupAddress { get; set; } = string.Empty;
+    public double? PickupLat { get; set; }
+    public double? PickupLng { get; set; }
     public string DropoffAddress { get; set; } = string.Empty;
     public string Zone { get; set; } = string.Empty;           // para filtrar riders cercanos
     public decimal DeliveryFee { get; set; }                   // lo que el restaurante le paga al rider (fuera de Comanda)
     public string Notes { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;  // para que el rider contacte al cliente
 
     public JobStatus Status { get; set; } = JobStatus.Open;
     public Guid? RiderId { get; set; }

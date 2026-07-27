@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RidersHub.Persistence;
@@ -11,9 +12,11 @@ using RidersHub.Persistence;
 namespace RidersHub.Migrations
 {
     [DbContext(typeof(RidersDbContext))]
-    partial class RidersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724031108_JobPickupCoords")]
+    partial class JobPickupCoords
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

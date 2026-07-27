@@ -138,3 +138,88 @@ public sealed class MeEndpoint(RidersDbContext db, CurrentRider current) : Endpo
         await Send.OkAsync(RiderDto.From(rider), ct);
     }
 }
+
+// ---------------- Editar perfil (nombre, zona, vehículo) ----------------
+
+public sealed class UpdateProfileRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Zone { get; set; } = string.Empty;
+    public string VehicleType { get; set; } = string.Empty;
+}
+
+public sealed class UpdateProfileValidator : Validator<UpdateProfileRequest>
+{
+    public UpdateProfileValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().WithMessage("El nombre es obligatorio.");
+        RuleFor(x => x.Zone).NotEmpty().WithMessage("La zona donde operas es obligatoria.");
+    }
+}
+
+public sealed class UpdateProfileEndpoint(RidersDbContext db, CurrentRider current) : Endpoint<UpdateProfileRequest, RiderDto>
+{
+    public override void Configure() => Put("/riders/me");
+
+    public override async Task HandleAsync(UpdateProfileRequest req, CancellationToken ct)
+    {
+        if (current.RiderId is not { } id || await db.Riders.FindAsync([id], ct) is not { } rider)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        rider.Name = req.Name.Trim();
+        rider.Zone = req.Zone.Trim();
+        rider.VehicleType = req.VehicleType.Trim();
+        await db.SaveChangesAsync(ct);
+
+        await Send.OkAsync(RiderDto.From(rider), ct);
+    }
+}
+
+// ---------------- Cambiar contraseña ----------------
+
+public sealed class ChangePasswordRequest
+{
+    public string CurrentPassword { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public sealed class ChangePasswordValidator : Validator<ChangePasswordRequest>
+{
+    public ChangePasswordValidator()
+    {
+        RuleFor(x => x.CurrentPassword).NotEmpty();
+        RuleFor(x => x.NewPassword).MinimumLength(6).WithMessage("La nueva contraseña debe tener al menos 6 caracteres.");
+    }
+}
+
+public sealed class ChangePasswordEndpoint(RidersDbContext db, CurrentRider current) : Endpoint<ChangePasswordRequest>
+{
+    public override void Configure() => Post("/riders/me/change-password");
+
+    public override async Task HandleAsync(ChangePasswordRequest req, CancellationToken ct)
+    {
+        if (current.RiderId is not { } id || await db.Riders.FindAsync([id], ct) is not { } rider)
+        {
+            await Send.NotFoundAsync(ct);
+            return;
+        }
+
+        bool ok;
+        try { ok = BCrypt.Net.BCrypt.Verify(req.CurrentPassword, rider.PasswordHash); }
+        catch (SaltParseException) { ok = false; }
+
+        if (!ok)
+        {
+            HttpContext.Response.StatusCode = 400;
+            await HttpContext.Response.WriteAsJsonAsync(new { codigo = "riders.password_incorrecta", mensaje = "La contraseña actual no es correcta." }, ct);
+            return;
+        }
+
+        rider.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await db.SaveChangesAsync(ct);
+        await Send.NoContentAsync(ct);
+    }
+}

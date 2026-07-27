@@ -8,10 +8,11 @@ using RidersHub.Services;
 
 namespace RidersHub.Features;
 
-/// <summary>Minutos que un job queda visible SOLO para riders Pro antes de abrirse a todos (Free incluido).</summary>
+/// <summary>Minutos que un job queda visible SOLO para riders Pro antes de abrirse a todos (Free incluido).
+/// En 0 mientras probamos/lanzamos (sin suficientes riders Pro todavía) — subir cuando el pool crezca.</summary>
 public static class VisibilityPolicy
 {
-    public const int ProExclusiveMinutes = 3;
+    public const int ProExclusiveMinutes = 0;
 }
 
 public sealed class JobDto
@@ -20,19 +21,28 @@ public sealed class JobDto
     public string OrderCode { get; set; } = string.Empty;
     public string RestaurantName { get; set; } = string.Empty;
     public string PickupAddress { get; set; } = string.Empty;
+    public double? PickupLat { get; set; }
+    public double? PickupLng { get; set; }
     public string DropoffAddress { get; set; } = string.Empty;
     public string Zone { get; set; } = string.Empty;
     public decimal DeliveryFee { get; set; }
     public string Notes { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string RiderName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public DateTime? AcceptedAt { get; set; }
+    public DateTime? DeliveredAt { get; set; }
 
     public static JobDto From(DeliveryJob j) => new()
     {
         Id = j.Id, OrderCode = j.OrderCode, RestaurantName = j.RestaurantName, PickupAddress = j.PickupAddress,
+        PickupLat = j.PickupLat, PickupLng = j.PickupLng,
         DropoffAddress = j.DropoffAddress, Zone = j.Zone, DeliveryFee = j.DeliveryFee, Notes = j.Notes,
+        CustomerName = j.CustomerName, CustomerPhone = j.CustomerPhone,
         Status = j.Status.ToString(), RiderName = j.RiderName, CreatedAt = j.CreatedAt,
+        AcceptedAt = j.AcceptedAt, DeliveredAt = j.DeliveredAt,
     };
 }
 
@@ -45,10 +55,14 @@ public sealed class PublishJobRequest
     public string OrderCode { get; set; } = string.Empty;
     public string RestaurantName { get; set; } = string.Empty;
     public string PickupAddress { get; set; } = string.Empty;
+    public double? PickupLat { get; set; }
+    public double? PickupLng { get; set; }
     public string DropoffAddress { get; set; } = string.Empty;
     public string Zone { get; set; } = string.Empty;
     public decimal DeliveryFee { get; set; }
     public string Notes { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;
     public string CallbackUrl { get; set; } = string.Empty;
     public string CallbackKey { get; set; } = string.Empty;
 }
@@ -71,8 +85,11 @@ public sealed class PublishJobEndpoint(RidersDbContext db) : Endpoint<PublishJob
         var job = new DeliveryJob
         {
             TenantId = req.TenantId, OrderId = req.OrderId, OrderCode = req.OrderCode, RestaurantName = req.RestaurantName,
-            PickupAddress = req.PickupAddress, DropoffAddress = req.DropoffAddress, Zone = req.Zone.Trim(),
-            DeliveryFee = req.DeliveryFee, Notes = req.Notes, CallbackUrl = req.CallbackUrl, CallbackKey = req.CallbackKey,
+            PickupAddress = req.PickupAddress, PickupLat = req.PickupLat, PickupLng = req.PickupLng,
+            DropoffAddress = req.DropoffAddress, Zone = req.Zone.Trim(),
+            DeliveryFee = req.DeliveryFee, Notes = req.Notes,
+            CustomerName = req.CustomerName, CustomerPhone = req.CustomerPhone,
+            CallbackUrl = req.CallbackUrl, CallbackKey = req.CallbackKey,
         };
         db.Jobs.Add(job);
         await db.SaveChangesAsync(ct);
@@ -102,7 +119,11 @@ public sealed class ListJobsEndpoint(RidersDbContext db, CurrentRider current) :
             ? open
             : open.Where(j => j.CreatedAt <= DateTime.UtcNow.AddMinutes(-VisibilityPolicy.ProExclusiveMinutes)).ToList();
 
-        await Send.OkAsync(visible.Select(JobDto.From).ToList(), ct);
+        // El contacto del cliente solo se revela tras aceptar (no antes, para no exponerlo de gratis).
+        var dtos = visible.Select(JobDto.From).ToList();
+        foreach (var d in dtos) { d.CustomerName = string.Empty; d.CustomerPhone = string.Empty; }
+
+        await Send.OkAsync(dtos, ct);
     }
 }
 

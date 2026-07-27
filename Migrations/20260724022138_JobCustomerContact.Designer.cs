@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RidersHub.Persistence;
@@ -11,9 +12,11 @@ using RidersHub.Persistence;
 namespace RidersHub.Migrations
 {
     [DbContext(typeof(RidersDbContext))]
-    partial class RidersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260724022138_JobCustomerContact")]
+    partial class JobCustomerContact
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -82,12 +85,6 @@ namespace RidersHub.Migrations
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
-
-                    b.Property<double?>("PickupLat")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("PickupLng")
-                        .HasColumnType("double precision");
 
                     b.Property<string>("RestaurantName")
                         .IsRequired()
