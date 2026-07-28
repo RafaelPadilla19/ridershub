@@ -30,6 +30,9 @@ public class DeliveryJob
     public Guid? RiderId { get; set; }
     public string RiderName { get; set; } = string.Empty;      // snapshot para no requerir join
 
+    /// <summary>Tarifa que el rider propuso al aceptar, si pidió otra distinta a DeliveryFee (se paga fuera de Comanda igual).</summary>
+    public decimal? ProposedFee { get; set; }
+
     // Webhook de vuelta a Comanda.Api cuando cambia de estado (mismo patrón que Charge.CallbackUrl/Key).
     public string CallbackUrl { get; set; } = string.Empty;
     public string CallbackKey { get; set; } = string.Empty;

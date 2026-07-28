@@ -9,6 +9,7 @@ public sealed class RidersDbContext(DbContextOptions<RidersDbContext> options) :
     public DbSet<DeliveryJob> Jobs => Set<DeliveryJob>();
     public DbSet<RiderRating> Ratings => Set<RiderRating>();
     public DbSet<RiderSubscriptionPayment> SubscriptionPayments => Set<RiderSubscriptionPayment>();
+    public DbSet<VehicleType> VehicleTypes => Set<VehicleType>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -32,6 +33,7 @@ public sealed class RidersDbContext(DbContextOptions<RidersDbContext> options) :
             e.Property(x => x.Zone).HasMaxLength(80);
             e.Property(x => x.Notes).HasMaxLength(400);
             e.Property(x => x.DeliveryFee).HasPrecision(18, 2);
+            e.Property(x => x.ProposedFee).HasPrecision(18, 2);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.CallbackUrl).HasMaxLength(400);
             e.Property(x => x.CallbackKey).HasMaxLength(200);
@@ -49,6 +51,17 @@ public sealed class RidersDbContext(DbContextOptions<RidersDbContext> options) :
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.PaymentRef).HasMaxLength(80);
             e.HasIndex(x => x.RiderId);
+        });
+
+        b.Entity<VehicleType>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(40).IsRequired();
+            e.HasIndex(x => x.Name).IsUnique();
+            e.HasData(
+                new VehicleType { Id = Guid.Parse("9c1b6f1a-0001-4000-8000-000000000001"), Name = "Moto", SortOrder = 0 },
+                new VehicleType { Id = Guid.Parse("9c1b6f1a-0001-4000-8000-000000000002"), Name = "Carro", SortOrder = 1 },
+                new VehicleType { Id = Guid.Parse("9c1b6f1a-0001-4000-8000-000000000003"), Name = "Bicicleta", SortOrder = 2 },
+                new VehicleType { Id = Guid.Parse("9c1b6f1a-0001-4000-8000-000000000004"), Name = "A pie", SortOrder = 3 });
         });
     }
 }

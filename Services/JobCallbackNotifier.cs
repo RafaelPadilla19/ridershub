@@ -21,6 +21,7 @@ public sealed class JobCallbackNotifier(IHttpClientFactory http, ILogger<JobCall
                 orderId = job.OrderId,
                 status = job.Status.ToString(),
                 riderName = job.RiderName,
+                proposedFee = job.ProposedFee,
             });
             await client.SendAsync(msg, ct);
         }

@@ -31,6 +31,7 @@ public sealed class JobDto
     public string CustomerPhone { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string RiderName { get; set; } = string.Empty;
+    public decimal? ProposedFee { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? AcceptedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
@@ -41,7 +42,7 @@ public sealed class JobDto
         PickupLat = j.PickupLat, PickupLng = j.PickupLng,
         DropoffAddress = j.DropoffAddress, Zone = j.Zone, DeliveryFee = j.DeliveryFee, Notes = j.Notes,
         CustomerName = j.CustomerName, CustomerPhone = j.CustomerPhone,
-        Status = j.Status.ToString(), RiderName = j.RiderName, CreatedAt = j.CreatedAt,
+        Status = j.Status.ToString(), RiderName = j.RiderName, ProposedFee = j.ProposedFee, CreatedAt = j.CreatedAt,
         AcceptedAt = j.AcceptedAt, DeliveredAt = j.DeliveredAt,
     };
 }
@@ -129,7 +130,12 @@ public sealed class ListJobsEndpoint(RidersDbContext db, CurrentRider current) :
 
 // ---------------- Aceptar ----------------
 
-public sealed class AcceptJobRequest { public Guid Id { get; set; } }
+public sealed class AcceptJobRequest
+{
+    public Guid Id { get; set; }
+    /// <summary>Tarifa que el rider propone en vez de la publicada (opcional). Se paga fuera de Comanda igual.</summary>
+    public decimal? ProposedFee { get; set; }
+}
 
 public sealed class AcceptJobEndpoint(RidersDbContext db, CurrentRider current, JobCallbackNotifier notifier)
     : Endpoint<AcceptJobRequest, JobDto>
@@ -156,6 +162,7 @@ public sealed class AcceptJobEndpoint(RidersDbContext db, CurrentRider current, 
         job.RiderId = riderId;
         job.RiderName = rider.Name;
         job.AcceptedAt = DateTime.UtcNow;
+        if (req.ProposedFee is { } fee && fee > 0 && fee != job.DeliveryFee) job.ProposedFee = fee;
         await db.SaveChangesAsync(ct);
         await notifier.NotifyAsync(job, ct);
 
