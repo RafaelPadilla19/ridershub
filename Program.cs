@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using RidersHub.Persistence;
@@ -45,6 +47,29 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<CurrentRider>();
 
+// ---- IP real del rider detrás del proxy de Cloud Run (para rate limiting por IP) ----
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
+// ---- Rate limiting (fuerza bruta en login: 5 intentos por minuto, por IP) ----
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("login", httpContext =>
+    System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
+});
+
 // ---- Cliente de PaymentsHub (mismo microservicio que usa Comanda.Api) ----
 var paymentsUrl = builder.Configuration["Services:PaymentsHubUrl"] ?? "http://localhost:5060";
 builder.Services.AddHttpClient<PaymentsHubClient>(c => c.BaseAddress = new Uri(paymentsUrl));
@@ -68,10 +93,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<RidersDbContext>().Database.MigrateAsync();
 
+app.UseForwardedHeaders();
 app.UseCors("riders-client");
 app.UseAuthentication();
 app.UseMiddleware<RidersHub.Security.ApiKeyMiddleware>();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.UseFastEndpoints(c => c.Serializer.Options.Converters.Add(new JsonStringEnumConverter()));
 app.UseSwaggerGen();
 

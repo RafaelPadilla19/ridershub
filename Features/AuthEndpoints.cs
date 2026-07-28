@@ -1,6 +1,7 @@
 using BCrypt.Net;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RidersHub.Domain;
 using RidersHub.Persistence;
@@ -101,7 +102,12 @@ public sealed class LoginValidator : Validator<LoginRequest>
 
 public sealed class LoginEndpoint(RidersDbContext db, JwtTokenService jwt) : Endpoint<LoginRequest, AuthResponse>
 {
-    public override void Configure() { Post("/riders/login"); AllowAnonymous(); }
+    public override void Configure()
+    {
+        Post("/riders/login");
+        AllowAnonymous();
+        Options(b => b.RequireRateLimiting("login"));
+    }
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)
     {
